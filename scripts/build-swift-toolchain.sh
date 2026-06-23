@@ -30,7 +30,7 @@ echo "== Build Swift toolchain =="
   --swift-enable-assertions true \
   --swift-stdlib-enable-assertions false \
   --swift-stdlib-enable-strict-availability false \
-  --build-jobs "$BUILD_JOBS" \
+  --jobs "$BUILD_JOBS" \
   --lit-jobs "$BUILD_JOBS" \
   --build-swift-libexec true \
   --swift-enable-backtracing true \
@@ -67,4 +67,3 @@ echo "== Build Swift toolchain =="
   --llvm-install-components="llvm-ar;llvm-nm;llvm-ranlib;llvm-cov;llvm-profdata;llvm-objdump;llvm-objcopy;llvm-symbolizer;IndexStore;clang;clang-resource-headers;libclang;LTO;clang-features-file" \
   --skip-build-lld \
   --only-execute linux-aarch64-swift-build
-
