@@ -65,5 +65,4 @@ echo "== Build Swift toolchain =="
   --reconfigure \
   --llvm-lit-args=-sv \
   --llvm-install-components="llvm-ar;llvm-nm;llvm-ranlib;llvm-cov;llvm-profdata;llvm-objdump;llvm-objcopy;llvm-symbolizer;IndexStore;clang;clang-resource-headers;libclang;LTO;clang-features-file" \
-  --skip-build-lld \
-  --only-execute linux-aarch64-swift-build
+  --skip-build-lld
