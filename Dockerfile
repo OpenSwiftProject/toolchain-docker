@@ -50,17 +50,25 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     bash \
     ca-certificates \
+    clang \
+    libavahi-client3 \
+    libavahi-common3 \
     libcurl4 \
     libedit2 \
     libffi8 \
+    libgnutls30t64 \
     libicu74 \
     libsqlite3-0 \
     libxml2 \
+    libxslt1.1 \
     libz3-4 \
     zlib1g \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/openswift /opt/openswift
+
+RUN ln -sf /usr/bin/clang /opt/openswift/swift-6.3-gnustep/usr/bin/clang \
+  && ln -sf /usr/bin/clang++ /opt/openswift/swift-6.3-gnustep/usr/bin/clang++
 
 ENV OPEN_SWIFT_TOOLCHAIN=/opt/openswift/swift-6.3-gnustep/usr
 ENV GNUSTEP_PREFIX=/opt/openswift/gnustep
@@ -71,4 +79,3 @@ ENV LIBRARY_PATH=/opt/openswift/gnustep/lib
 ENV PKG_CONFIG_PATH=/opt/openswift/gnustep/lib/pkgconfig:/opt/openswift/gnustep/share/pkgconfig
 
 CMD ["/bin/bash"]
-
