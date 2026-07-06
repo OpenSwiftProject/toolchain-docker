@@ -14,12 +14,21 @@ The image is built from OpenSwiftProject forks, not from local machine artifacts
 
 ## Image Names
 
-Primary GHCR alpha tags:
+Immutable alpha tags:
 
 ```text
-ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha-ubuntu24-aarch64
-ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha
+ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha.N
+ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha.N-ubuntu24-aarch64
 ```
+
+Moving alpha aliases:
+
+```text
+ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha
+ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha-ubuntu24-aarch64
+```
+
+Use immutable tags for reproducible testing and moving aliases for the latest published alpha in the same Swift release channel.
 
 ## Build Locally
 
@@ -37,8 +46,7 @@ docker buildx build \
 Or use the wrapper script:
 
 ```sh
-OPEN_SWIFT_TOOLCHAIN_IMAGE=ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha-ubuntu24-aarch64 \
-  ./scripts/build-image.sh
+./scripts/build-image.sh
 ```
 
 Smoke test:
@@ -49,19 +57,34 @@ Smoke test:
 
 ## Publish To GHCR From GitHub Actions
 
-Run the `Build and publish toolchain image` workflow manually. The workflow uses GitHub's built-in `GITHUB_TOKEN` to push to GitHub Container Registry, so no Docker Hub secrets are required.
+The `Build and publish toolchain image` workflow can publish manually or from a git tag push. It uses GitHub's built-in `GITHUB_TOKEN` to push to GitHub Container Registry, so no Docker Hub secrets are required.
 
-The workflow defaults to:
+Manual workflow inputs:
 
 ```text
 runner: ubuntu-24.04-arm
 image: ghcr.io/openswiftproject/swift-gnustep-toolchain
-tag: 6.3-alpha-ubuntu24-aarch64
+version_tag: required, for example 6.3-alpha.2
+build_jobs: 3
 ```
 
-It builds from forks, smoke-tests the loaded image, then pushes when `push_image` is true.
+Manual workflow runs build from forks, smoke-tests the loaded image, then publishes GHCR tags.
 
-`push_image` defaults to false so manual workflow runs can be used as build-only validation. Set it to true when publishing GHCR tags.
+For normal releases, create and push a version tag:
+
+```sh
+git tag 6.3-alpha.2
+git push <remote> 6.3-alpha.2
+```
+
+Pushing `6.3-alpha.N` tags automatically publishes:
+
+```text
+6.3-alpha.N
+6.3-alpha.N-ubuntu24-aarch64
+6.3-alpha
+6.3-alpha-ubuntu24-aarch64
+```
 
 After the first GHCR push, confirm the package visibility is public under the OpenSwiftProject organization so users can pull the image without logging in.
 

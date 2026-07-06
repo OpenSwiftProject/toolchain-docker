@@ -1,6 +1,9 @@
 name: Build and publish toolchain image
 
 on:
+  push:
+    tags:
+      - "6.3-alpha.*"
   workflow_dispatch:
     inputs:
       runner:
@@ -11,15 +14,9 @@ on:
         description: "Container image name"
         required: true
         default: "ghcr.io/openswiftproject/swift-gnustep-toolchain"
-      image_tag:
-        description: "Container image tag"
+      version_tag:
+        description: "Version tag, for example 6.3-alpha.2"
         required: true
-        default: "6.3-alpha-ubuntu24-aarch64"
-      push_image:
-        description: "Push to GHCR"
-        type: boolean
-        required: true
-        default: false
       build_jobs:
         description: "Parallel build jobs"
         required: true
@@ -31,7 +28,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ inputs.runner || 'ubuntu-24.04-arm' }}
     timeout-minutes: 720
 
     steps:
@@ -41,8 +38,51 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Resolve image metadata
+        id: image
+        env:
+          INPUT_IMAGE_NAME: ${{ inputs.image_name }}
+          INPUT_VERSION_TAG: ${{ inputs.version_tag }}
+          INPUT_BUILD_JOBS: ${{ inputs.build_jobs }}
+        run: |
+          set -euo pipefail
+
+          image_name="${INPUT_IMAGE_NAME:-ghcr.io/openswiftproject/swift-gnustep-toolchain}"
+          platform_suffix="ubuntu24-aarch64"
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            version_tag="$GITHUB_REF_NAME"
+          else
+            version_tag="$INPUT_VERSION_TAG"
+          fi
+          build_jobs="${INPUT_BUILD_JOBS:-3}"
+
+          if [[ ! "$version_tag" =~ ^6\.3-alpha\.[0-9]+$ ]]; then
+            echo "error: version_tag must look like 6.3-alpha.N, got '$version_tag'" >&2
+            exit 1
+          fi
+
+          platform_tag="${version_tag}-${platform_suffix}"
+          channel_tag="${version_tag%.*}"
+          channel_platform_tag="${channel_tag}-${platform_suffix}"
+
+          image_refs="$image_name:$version_tag $image_name:$platform_tag"
+          publish_refs="$image_refs $image_name:$channel_tag $image_name:$channel_platform_tag"
+
+          {
+            echo "image_name=$image_name"
+            echo "version_tag=$version_tag"
+            echo "platform_tag=$platform_tag"
+            echo "channel_tag=$channel_tag"
+            echo "channel_platform_tag=$channel_platform_tag"
+            echo "primary_ref=$image_name:$version_tag"
+            echo "platform_ref=$image_name:$platform_tag"
+            echo "image_refs=$image_refs"
+            echo "publish_refs=$publish_refs"
+            echo "build_jobs=$build_jobs"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Log in to GHCR
-        if: ${{ inputs.push_image }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -52,28 +92,28 @@ jobs:
       - name: Build image
         run: |
           set -euo pipefail
-          IMAGE="${{ inputs.image_name }}:${{ inputs.image_tag }}"
           docker buildx build \
             --platform linux/arm64 \
             --load \
-            --build-arg BUILD_JOBS="${{ inputs.build_jobs }}" \
+            --build-arg BUILD_JOBS="${{ steps.image.outputs.build_jobs }}" \
             --build-arg IMAGE_REVISION="${{ github.sha }}" \
             --build-arg IMAGE_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -t "$IMAGE" \
+            -t "${{ steps.image.outputs.primary_ref }}" \
+            -t "${{ steps.image.outputs.platform_ref }}" \
             .
 
       - name: Smoke test image
         run: |
           set -euo pipefail
-          ./scripts/smoke-test-image.sh "${{ inputs.image_name }}:${{ inputs.image_tag }}"
+          ./scripts/smoke-test-image.sh "${{ steps.image.outputs.primary_ref }}"
 
       - name: Push image
-        if: ${{ inputs.push_image }}
         run: |
           set -euo pipefail
-          IMAGE="${{ inputs.image_name }}:${{ inputs.image_tag }}"
-          docker push "$IMAGE"
-          if [[ "${{ inputs.image_tag }}" == "6.3-alpha-ubuntu24-aarch64" ]]; then
-            docker tag "$IMAGE" "${{ inputs.image_name }}:6.3-alpha"
-            docker push "${{ inputs.image_name }}:6.3-alpha"
-          fi
+          primary_ref="${{ steps.image.outputs.primary_ref }}"
+          docker tag "$primary_ref" "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.channel_tag }}"
+          docker tag "$primary_ref" "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.channel_platform_tag }}"
+
+          for image_ref in ${{ steps.image.outputs.publish_refs }}; do
+            docker push "$image_ref"
+          done
