@@ -24,9 +24,10 @@ ENV GNUSTEP_PREFIX=/opt/openswift/gnustep
 ENV OPEN_SWIFT_TOOLCHAIN=/opt/openswift/swift-6.3-gnustep/usr
 ENV BUILD_JOBS=${BUILD_JOBS}
 
-COPY scripts/ /opt/openswift-build/scripts/
-
+COPY scripts/install-build-deps.sh /opt/openswift-build/scripts/install-build-deps.sh
 RUN /opt/openswift-build/scripts/install-build-deps.sh
+
+COPY scripts/ /opt/openswift-build/scripts/
 RUN /opt/openswift-build/scripts/clone-sources.sh
 RUN /opt/openswift-build/scripts/build-gnustep-baseline.sh
 RUN /opt/openswift-build/scripts/build-swift-toolchain.sh
@@ -62,13 +63,16 @@ RUN apt-get update \
     libxml2 \
     libxslt1.1 \
     libz3-4 \
+    lld \
+    make \
     zlib1g \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/openswift /opt/openswift
 
 RUN ln -sf /usr/bin/clang /opt/openswift/swift-6.3-gnustep/usr/bin/clang \
-  && ln -sf /usr/bin/clang++ /opt/openswift/swift-6.3-gnustep/usr/bin/clang++
+  && ln -sf /usr/bin/clang++ /opt/openswift/swift-6.3-gnustep/usr/bin/clang++ \
+  && ln -sf /usr/bin/make /usr/bin/gmake
 
 ENV OPEN_SWIFT_TOOLCHAIN=/opt/openswift/swift-6.3-gnustep/usr
 ENV GNUSTEP_PREFIX=/opt/openswift/gnustep

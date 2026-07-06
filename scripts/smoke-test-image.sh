@@ -7,10 +7,18 @@ docker run --rm --platform linux/arm64 "$IMAGE" bash -lc '
   set -euo pipefail
   "$OPEN_SWIFT_TOOLCHAIN/bin/swiftc" --version
   "$OPEN_SWIFT_TOOLCHAIN/bin/clang" --version
-  "$GNUSTEP_PREFIX/bin/gnustep-config" --objc-flags >/dev/null
   test -f "$GNUSTEP_PREFIX/lib/libobjc.so" || test -f "$GNUSTEP_PREFIX/lib/libobjc.so.4.6"
   test -f "$GNUSTEP_PREFIX/lib/libgnustep-base.so" || test -f "$GNUSTEP_PREFIX/lib/libgnustep-base.so.1.31.1"
   ! ldd "$GNUSTEP_PREFIX/lib/libgnustep-base.so" | grep "not found"
+
+  OBJCFLAGS="$("$GNUSTEP_PREFIX/bin/gnustep-config" --objc-flags)"
+  BASELIBS="$("$GNUSTEP_PREFIX/bin/gnustep-config" --base-libs)"
+  if [[ -z "$OBJCFLAGS" || "$BASELIBS" != *-lgnustep-base* ]]; then
+    echo "error: gnustep-config did not return usable Objective-C/Foundation flags" >&2
+    echo "objc flags: $OBJCFLAGS" >&2
+    echo "base libs: $BASELIBS" >&2
+    exit 1
+  fi
 
   tmpdir="$(mktemp -d)"
   cat > "$tmpdir/FoundationSmoke.m" <<'"'"'EOF'"'"'
@@ -26,8 +34,6 @@ int main(void) {
 }
 EOF
 
-  OBJCFLAGS="$("$GNUSTEP_PREFIX/bin/gnustep-config" --objc-flags)"
-  BASELIBS="$("$GNUSTEP_PREFIX/bin/gnustep-config" --base-libs)"
   "$OPEN_SWIFT_TOOLCHAIN/bin/clang" $OBJCFLAGS \
     -fobjc-runtime=gnustep-2.0 \
     -fobjc-arc \
