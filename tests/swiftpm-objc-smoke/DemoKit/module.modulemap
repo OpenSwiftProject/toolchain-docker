@@ -1,0 +1,4 @@
+module ObjCDemoKit {
+  header "ObjCGreeter.h"
+  export *
+}
