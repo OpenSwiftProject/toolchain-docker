@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1.7
 
-ARG UBUNTU_VERSION=24.04
+ARG UBUNTU_IMAGE=ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
+ARG SWIFT_BOOTSTRAP_IMAGE=swift:6.3.3-noble@sha256:56ef1be2c1ca36f4c52440357dc1fcdfdb5e113587134fcadeef57c225c71b54
 
-FROM ubuntu:${UBUNTU_VERSION} AS builder
+FROM ${SWIFT_BOOTSTRAP_IMAGE} AS swift-bootstrap
+
+FROM ${UBUNTU_IMAGE} AS builder
 
 ARG BUILD_JOBS=3
 ARG OPEN_SWIFT_GIT_BASE=https://github.com/OpenSwiftProject
@@ -20,6 +23,7 @@ ENV OPEN_SWIFT_SOURCE_ROOT=/work/OpenSwiftProject/swift-projects
 ENV OPEN_SWIFT_GNUSTEP_SRC=/work/OpenSwiftProject/gnustep-src
 ENV OPEN_SWIFT_BUILD_ROOT=/work/OpenSwiftProject/build
 ENV OPEN_SWIFT_TOOLCHAIN_DESTDIR=/opt/openswift/swift-6.3-gnustep
+ENV OPEN_SWIFT_BOOTSTRAP_TOOLCHAIN=/opt/openswift-bootstrap/usr
 ENV GNUSTEP_PREFIX=/opt/openswift/gnustep
 ENV OPEN_SWIFT_TOOLCHAIN=/opt/openswift/swift-6.3-gnustep/usr
 ENV BUILD_JOBS=${BUILD_JOBS}
@@ -27,13 +31,27 @@ ENV BUILD_JOBS=${BUILD_JOBS}
 COPY scripts/install-build-deps.sh /opt/openswift-build/scripts/install-build-deps.sh
 RUN /opt/openswift-build/scripts/install-build-deps.sh
 
-COPY scripts/ /opt/openswift-build/scripts/
+COPY scripts/clone-sources.sh /opt/openswift-build/scripts/clone-sources.sh
 RUN /opt/openswift-build/scripts/clone-sources.sh
+
+COPY scripts/build-gnustep-baseline.sh /opt/openswift-build/scripts/build-gnustep-baseline.sh
 RUN /opt/openswift-build/scripts/build-gnustep-baseline.sh
-RUN /opt/openswift-build/scripts/build-swift-toolchain.sh
+
+COPY scripts/build-swift-toolchain.sh /opt/openswift-build/scripts/build-swift-toolchain.sh
+COPY scripts/build-swiftpm-toolchain.sh /opt/openswift-build/scripts/build-swiftpm-toolchain.sh
+ARG TARGETARCH
+ARG SWIFT_BUILD_CACHE_EPOCH=swift63-gnustep-v1
+RUN --mount=from=swift-bootstrap,source=/usr,target=/opt/openswift-bootstrap/usr,ro \
+  --mount=type=cache,id=openswift-${SWIFT_BUILD_CACHE_EPOCH}-${TARGETARCH},target=/work/OpenSwiftProject/swift-projects/build,sharing=locked \
+  /opt/openswift-build/scripts/build-swift-toolchain.sh \
+  && /opt/openswift-build/scripts/build-swiftpm-toolchain.sh
+
+COPY scripts/smoke-test-swift-package.sh /opt/openswift-build/scripts/smoke-test-swift-package.sh
+COPY scripts/smoke-test-toolchain.sh /opt/openswift-build/scripts/smoke-test-toolchain.sh
+COPY tests/ /opt/openswift-build/tests/
 RUN /opt/openswift-build/scripts/smoke-test-toolchain.sh
 
-FROM ubuntu:${UBUNTU_VERSION} AS runtime
+FROM ${UBUNTU_IMAGE} AS runtime
 
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_CREATED=unknown
@@ -52,6 +70,7 @@ RUN apt-get update \
     bash \
     ca-certificates \
     clang \
+    git \
     libavahi-client3 \
     libavahi-common3 \
     libcurl4 \
@@ -59,12 +78,20 @@ RUN apt-get update \
     libffi8 \
     libgnutls30t64 \
     libicu74 \
+    libncurses6 \
     libsqlite3-0 \
+    libtinfo6 \
     libxml2 \
     libxslt1.1 \
     libz3-4 \
     lld \
     make \
+    openssh-client \
+    pkg-config \
+    tar \
+    tzdata \
+    unzip \
+    zip \
     zlib1g \
   && rm -rf /var/lib/apt/lists/*
 
