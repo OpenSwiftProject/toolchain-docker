@@ -16,7 +16,9 @@ test -f "$GNUSTEP_PREFIX/lib/libgnustep-base.so" || test -f "$GNUSTEP_PREFIX/lib
 test -x "$OPEN_SWIFT_TOOLCHAIN/bin/swift-package"
 test -e "$OPEN_SWIFT_TOOLCHAIN/bin/swift-build"
 test -e "$OPEN_SWIFT_TOOLCHAIN/bin/swift-run"
+test -e "$OPEN_SWIFT_TOOLCHAIN/bin/swift-test"
 test -x "$OPEN_SWIFT_TOOLCHAIN/bin/swift-build-tool"
+test -f "$OPEN_SWIFT_TOOLCHAIN/lib/libIndexStore.so"
 test -f "$OPEN_SWIFT_TOOLCHAIN/lib/swift/pm/ManifestAPI/libPackageDescription.so"
 test -f "$OPEN_SWIFT_TOOLCHAIN/lib/swift/pm/PluginAPI/libPackagePlugin.so"
 test -f "$OPEN_SWIFT_TOOLCHAIN/lib/swift/linux/libFoundation.so"
@@ -65,6 +67,7 @@ check_dynamic_dependencies() {
 }
 
 check_dynamic_dependencies "$OPEN_SWIFT_TOOLCHAIN/bin/swift-package"
+check_dynamic_dependencies "$OPEN_SWIFT_TOOLCHAIN/lib/libIndexStore.so"
 check_dynamic_dependencies "$OPEN_SWIFT_TOOLCHAIN/lib/swift/pm/ManifestAPI/libPackageDescription.so"
 
 OPEN_SWIFT_TOOLCHAIN="$OPEN_SWIFT_TOOLCHAIN" \

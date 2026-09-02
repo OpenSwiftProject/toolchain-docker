@@ -93,6 +93,7 @@ echo "== Build OpenSwift stage-1 host toolchain =="
   --extra-swift-cmake-options="${SWIFT_CMAKE_OPTIONS[*]}" \
   --extra-cmake-options="${COMMON_CMAKE_OPTIONS[*]}" \
   --swift-objc-interop=1 \
+  --install-llvm \
   --install-swift \
   --install-foundation \
   --install-libdispatch \
@@ -102,5 +103,5 @@ echo "== Build OpenSwift stage-1 host toolchain =="
   --install-xctest \
   --reconfigure \
   --llvm-lit-args=-sv \
-  --llvm-install-components="llvm-ar;llvm-nm;llvm-ranlib;llvm-cov;llvm-profdata;llvm-objdump;llvm-objcopy;llvm-symbolizer;IndexStore;clang;clang-resource-headers;libclang;LTO;clang-features-file" \
+  --llvm-install-components="IndexStore" \
   --skip-build-lld

@@ -2,8 +2,8 @@
 
 This repository builds the alpha Docker image used by `OpenSwiftProject/toolchain-example`.
 The image includes the Swift compiler, GNUstep Objective-C/Foundation runtime,
-and the matching SwiftPM/LLBuild toolchain needed for `swift build` and
-`swift run`.
+and the matching SwiftPM/LLBuild toolchain needed for `swift build`,
+`swift run`, and `swift test`.
 
 The shipped OpenSwift compiler, runtime, and package-manager components are
 built from OpenSwiftProject forks, not from local machine artifacts:
@@ -68,14 +68,25 @@ Smoke test:
 ./scripts/smoke-test-image.sh ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha-ubuntu24-aarch64
 ```
 
-The smoke test runs a real two-target Swift package in both Debug and Release:
+The smoke test runs a real mixed-language Swift package in both Debug and
+Release. Its production graph has one Swift executable target and one
+Objective-C target, plus a Swift test target that exercises both XCTest and
+Swift Testing by launching the built demo and asserting its Objective-C/
+Foundation output:
 
 ```sh
 swift build
 swift run GNUstepObjCDemo
+swift test
 swift build --configuration release
 swift run --configuration release GNUstepObjCDemo
+swift test --configuration release
 ```
+
+The integration-test target intentionally has no direct dependency on the
+Objective-C target. SwiftPM's generated test-discovery targets do not yet
+inherit the target-scoped GNUstep Objective-C importer flags, so direct import
+from a test target remains part of the general interop work tracked separately.
 
 By default it uses the self-contained fixture under
 `tests/swiftpm-objc-smoke`. To validate a local `toolchain-example` checkout
@@ -171,10 +182,11 @@ The example can also build this image first:
 
 ## Alpha Caveats
 
-The current milestone covers `swift build` and `swift run`. XCTest and Swift
-Testing are installed because the SwiftPM 6.3 self-host build imports their
-support modules, but end-to-end `swift test` behavior is not part of this
-milestone's acceptance claim.
+The current milestone covers `swift build`, `swift run`, and `swift test`.
+The Debug and Release smoke tests execute both an XCTest case and a Swift
+Testing `@Test`; each launches the built GNUstep Objective-C demo and verifies
+its output. This milestone does not claim that a SwiftPM test target can yet
+directly import the Objective-C target.
 
 This is also not complete, Darwin-equivalent GNUstep Objective-C interop. The
 SwiftPM smoke deliberately keeps the same three underlying toolchain

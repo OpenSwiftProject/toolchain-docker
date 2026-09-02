@@ -23,6 +23,7 @@ docker run --rm --platform linux/arm64 \
   set -euo pipefail
   "$OPEN_SWIFT_TOOLCHAIN/bin/swiftc" --version
   "$OPEN_SWIFT_TOOLCHAIN/bin/swift" package --version
+  test -e "$OPEN_SWIFT_TOOLCHAIN/bin/swift-test"
   "$OPEN_SWIFT_TOOLCHAIN/bin/clang" --version
   command -v git
   command -v ssh
@@ -32,6 +33,7 @@ docker run --rm --platform linux/arm64 \
   command -v zip
   test -f "$GNUSTEP_PREFIX/lib/libobjc.so" || test -f "$GNUSTEP_PREFIX/lib/libobjc.so.4.6"
   test -f "$GNUSTEP_PREFIX/lib/libgnustep-base.so" || test -f "$GNUSTEP_PREFIX/lib/libgnustep-base.so.1.31.1"
+  test -f "$OPEN_SWIFT_TOOLCHAIN/lib/libIndexStore.so"
   test -f "$OPEN_SWIFT_TOOLCHAIN/lib/swift/host/plugins/libTestingMacros.so"
 
   testing_macro_smoke_dir="$(mktemp -d)"
@@ -70,6 +72,7 @@ EOF
   }
 
   check_dynamic_dependencies "$GNUSTEP_PREFIX/lib/libgnustep-base.so"
+  check_dynamic_dependencies "$OPEN_SWIFT_TOOLCHAIN/lib/libIndexStore.so"
   check_dynamic_dependencies "$OPEN_SWIFT_TOOLCHAIN/bin/swift-package"
   check_dynamic_dependencies "$OPEN_SWIFT_TOOLCHAIN/lib/swift/pm/ManifestAPI/libPackageDescription.so"
 

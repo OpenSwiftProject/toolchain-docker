@@ -38,18 +38,39 @@ run_configuration() {
   local configuration="$1"
   local -a build_args=(--package-path "$package_copy")
   local -a run_args=(--package-path "$package_copy")
+  local -a test_args=(
+    --package-path "$package_copy"
+    --scratch-path "$work_dir/test-$configuration"
+  )
 
   if [[ "$configuration" == "release" ]]; then
     build_args+=(--configuration release)
     run_args+=(--configuration release)
+    test_args+=(--configuration release)
   fi
+
+  # Run tests first, with a dedicated scratch path, so the smoke proves that a
+  # standalone `swift test` builds the sibling executable used by the tests.
+  echo "== SwiftPM $configuration test =="
+  local test_output
+  if ! test_output="$("$SWIFT" test "${test_args[@]}" 2>&1)"; then
+    printf '%s\n' "$test_output" >&2
+    return 1
+  fi
+  printf '%s\n' "$test_output"
+
+  grep -Fq "Swift Testing verified swift test" <<<"$test_output"
+  grep -Fq "XCTest verified swift test" <<<"$test_output"
 
   echo "== SwiftPM $configuration build =="
   "$SWIFT" build "${build_args[@]}"
 
   echo "== SwiftPM $configuration run =="
   local output
-  output="$("$SWIFT" run "${run_args[@]}" GNUstepObjCDemo 2>&1)"
+  if ! output="$("$SWIFT" run "${run_args[@]}" GNUstepObjCDemo 2>&1)"; then
+    printf '%s\n' "$output" >&2
+    return 1
+  fi
   printf '%s\n' "$output"
 
   grep -Fq "ObjCGreeter: Hello from GNUstep Objective-C (4 items)" <<<"$output"
