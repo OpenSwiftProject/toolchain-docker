@@ -1,0 +1,14 @@
+sil_stage canonical
+import Builtin
+
+sil @selector_second : $@convention(c) () -> Builtin.RawPointer {
+bb0:
+  %0 = string_literal objc_selector "help:me:"
+  return %0 : $Builtin.RawPointer
+}
+
+sil @selector_dynamic_only : $@convention(c) () -> Builtin.RawPointer {
+bb0:
+  %0 = string_literal objc_selector "dynamicOnly:"
+  return %0 : $Builtin.RawPointer
+}

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Offline source-revision regression: dependency cloning is irrelevant here.
+set -euo pipefail

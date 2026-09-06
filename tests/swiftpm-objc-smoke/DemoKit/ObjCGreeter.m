@@ -1,4 +1,5 @@
 #import "ObjCGreeter.h"
+#import <objc/runtime.h>
 
 @implementation ObjCGreeter {
   NSString *_message;
@@ -22,6 +23,14 @@
   return [_items count];
 }
 
++ (const char *)classMessageCString {
+  return "GNUstep class selector";
+}
+
+- (NSUInteger)add:(NSUInteger)lhs to:(NSUInteger)rhs {
+  return lhs + rhs;
+}
+
 - (void)logFoundationObjects {
   void (^logger)(NSString *) = ^(NSString *label) {
     NSLog(@"%@: %@ (%lu items)", label, _message, (unsigned long)[_items count]);
@@ -33,4 +42,8 @@
 
 ObjCGreeter *MakeObjCGreeter(void) {
   return [[ObjCGreeter alloc] init];
+}
+
+const char *ObjCDemoClassName(Class cls) {
+  return class_getName(cls);
 }

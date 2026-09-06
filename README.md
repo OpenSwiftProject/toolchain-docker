@@ -17,8 +17,10 @@ built from OpenSwiftProject forks, not from local machine artifacts:
 - `OpenSwiftProject/libs-corebase@openswift/corebase-0_1_1`
 
 Digest-pinned Ubuntu 24.04 and Swift 6.3.3 images keep the base-image inputs
-stable. The source branches listed above remain moving inputs until their
-commits are pinned. The official Swift image is used only as the host compiler
+stable. CI/release workflows resolve the Swift ref to a full commit SHA and pass
+`SWIFT_REVISION` to the build; it invalidates the clone cache and is recorded in
+the `org.openswiftproject.swift.revision` image label. Other source branches
+listed above remain moving inputs. The official Swift image is used only as the host compiler
 for the stage-1 self-host build. The final Swift compiler, runtime libraries,
 XCTest, Swift Testing, LLBuild, and SwiftPM are all built from the source
 checkouts above (and the matching `release/6.3` workspace populated by Swift's
@@ -48,15 +50,19 @@ Use immutable tags for reproducible testing and moving aliases for the latest pu
 This build is intentionally heavy. Use an arm64 Ubuntu 24.04 environment with enough disk space.
 
 ```sh
+SWIFT_REVISION=$(git ls-remote https://github.com/OpenSwiftProject/swift.git \
+  refs/heads/feature/gnu_objc_6.3 | awk '{print $1}')
 docker buildx build \
   --platform linux/arm64 \
   --load \
   --build-arg BUILD_JOBS=3 \
+  --build-arg SWIFT_REVISION="$SWIFT_REVISION" \
   -t ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha-ubuntu24-aarch64 \
   .
 ```
 
-Or use the wrapper script:
+Or use the wrapper script, which resolves the current Swift commit by default
+(set `SWIFT_REVISION` explicitly to rebuild a specific commit):
 
 ```sh
 ./scripts/build-image.sh
@@ -100,6 +106,25 @@ instead, pass it as the second argument:
 
 ## Publish To GHCR From GitHub Actions
 
+The `Toolchain package regression` workflow builds and tests pull requests and
+`main` without publishing. CI and release both run
+`scripts/smoke-test-release.sh IMAGE EXAMPLE_CHECKOUT`, covering:
+
+- selector-only Swift DSOs with late loading, cross-object coalescing, Clang
+  selector equality, concurrent lookup, and `--gc-sections`, at `-Onone`/`-O`;
+- clean Debug/Release build, run, XCTest, and Swift Testing for both the in-repo
+  fixture and a checkout of the real `OpenSwiftProject/toolchain-example`;
+- the real example's manual shared-library runner and direct Swift allocation.
+
+Neither package may contain the selector shim or per-class linker aliases.
+The compiler and example selector changes must land before this gate can pass
+against their default branches. Once the new CI workflow is installed on
+`main`, manual runs can select candidate `swift_ref`/`example_ref` branches.
+
+For the next release, merge the compiler fix, then the example cleanup, then
+this repository's CI/fixture update. The planned next tag is `6.3-alpha.3`;
+this documentation is not a claim that it has already been published.
+
 The `Build and publish toolchain image` workflow can publish manually or from a git tag push. It uses GitHub's built-in `GITHUB_TOKEN` to push to GitHub Container Registry, so no Docker Hub secrets are required.
 
 Manual workflow inputs:
@@ -107,17 +132,21 @@ Manual workflow inputs:
 ```text
 runner: ubuntu-24.04-arm
 image: ghcr.io/openswiftproject/swift-gnustep-toolchain
-version_tag: required, for example 6.3-alpha.2
+version_tag: required, for example 6.3-alpha.3
 build_jobs: 3
+swift_ref: feature/gnu_objc_6.3
+example_ref: main
 ```
 
-Manual workflow runs build from forks, smoke-tests the loaded image, then publishes GHCR tags.
+Manual workflow runs build from forks, pass the shared release gate, and publish
+GHCR tags. A final step pulls the immutable tag with an empty Docker auth config
+and reruns the release gate, checking anonymous access and the published image.
 
 For normal releases, create and push a version tag:
 
 ```sh
-git tag 6.3-alpha.2
-git push <remote> 6.3-alpha.2
+git tag 6.3-alpha.3
+git push <remote> 6.3-alpha.3
 ```
 
 Pushing `6.3-alpha.N` tags automatically publishes:
@@ -189,18 +218,25 @@ its output. This milestone does not claim that a SwiftPM test target can yet
 directly import the Objective-C target.
 
 This is also not complete, Darwin-equivalent GNUstep Objective-C interop. The
-SwiftPM smoke deliberately keeps the same three underlying toolchain
-workarounds as
-`toolchain-example`:
+SwiftPM smoke keeps the same remaining runtime workaround as `toolchain-example`:
 
 - `ObjCInteropShim.c` for missing Swift runtime Objective-C metadata entry points.
-- `DarwinSelectorRefs.c` for selector registration expected by current IRGen.
-- A per-class ELF `--defsym` alias for GNUstep class-symbol lowering.
+
+Selector registration now uses native GNUstep records and the compiler-emitted
+image initializer. Imported class references use Clang's GNUstep reference
+slots. Neither path requires a demo-side selector shim or per-class alias.
+
+The Linux image still lacks the Swift `ObjectiveC` module/overlay needed by
+source-level `#selector`. The selector-only runtime regression intentionally
+uses SIL literals to test the ABI independently of that platform/overlay gap.
 
 The demo also keeps `MakeObjCGreeter()` behind an explicit factory-isolation
 gate. That gate crosses the runtime (`swift#2`) and IRGen (`swift#3`) work; it is
-not a fourth independent upstream issue. Final interop acceptance requires the
-direct Swift `ObjCGreeter()` allocation path to succeed.
+not a separate upstream issue. Direct Swift allocation passes the manual smoke
+with the runtime shim, but semantic runtime metadata correctness, Swift-defined
+Objective-C classes/subclasses, and general bridging remain separate work.
 
 Those remain tracked runtime/IRGen issues and do not block the package-manager
 workflow itself.
+
+Offline source-selection regression: `bash tests/source-revision/run.sh`.

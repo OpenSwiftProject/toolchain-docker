@@ -32,6 +32,9 @@ COPY scripts/install-build-deps.sh /opt/openswift-build/scripts/install-build-de
 RUN /opt/openswift-build/scripts/install-build-deps.sh
 
 COPY scripts/clone-sources.sh /opt/openswift-build/scripts/clone-sources.sh
+# A resolved revision also invalidates Docker's source-clone cache when the
+# Swift branch advances. Release/CI workflows always supply a full commit SHA.
+ARG SWIFT_REVISION
 RUN /opt/openswift-build/scripts/clone-sources.sh
 
 COPY scripts/build-gnustep-baseline.sh /opt/openswift-build/scripts/build-gnustep-baseline.sh
@@ -55,12 +58,14 @@ FROM ${UBUNTU_IMAGE} AS runtime
 
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_CREATED=unknown
+ARG SWIFT_REVISION=unknown
 
 LABEL org.opencontainers.image.title="OpenSwiftProject Swift GNUstep Toolchain"
 LABEL org.opencontainers.image.description="Alpha Swift 6.3 + GNUstep Objective-C interop toolchain image"
 LABEL org.opencontainers.image.source="https://github.com/OpenSwiftProject/toolchain-docker"
 LABEL org.opencontainers.image.revision="${IMAGE_REVISION}"
 LABEL org.opencontainers.image.created="${IMAGE_CREATED}"
+LABEL org.openswiftproject.swift.revision="${SWIFT_REVISION}"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 ENV DEBIAN_FRONTEND=noninteractive

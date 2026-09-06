@@ -6,6 +6,11 @@ OPEN_SWIFT_SOURCE_ROOT="${OPEN_SWIFT_SOURCE_ROOT:-/work/OpenSwiftProject/swift-p
 OPEN_SWIFT_GNUSTEP_SRC="${OPEN_SWIFT_GNUSTEP_SRC:-/work/OpenSwiftProject/gnustep-src}"
 
 SWIFT_BRANCH="${SWIFT_BRANCH:-feature/gnu_objc_6.3}"
+SWIFT_REVISION="${SWIFT_REVISION:-}"
+if [[ -n "$SWIFT_REVISION" && ! "$SWIFT_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "error: SWIFT_REVISION must be a full lowercase commit SHA" >&2
+  exit 1
+fi
 LLVM_BRANCH="${LLVM_BRANCH:-swift/release/6.3}"
 LIBDISPATCH_BRANCH="${LIBDISPATCH_BRANCH:-release/6.3}"
 LIBOBJC2_REF="${LIBOBJC2_REF:-v2.3}"
@@ -42,8 +47,11 @@ git -C "$OPEN_SWIFT_SOURCE_ROOT/swift" branch --force release/6.3 origin/release
   --skip-tags \
   --partial-clone \
   --clone
-git -C "$OPEN_SWIFT_SOURCE_ROOT/swift" fetch --filter=blob:none --depth 1 "$OPEN_SWIFT_GIT_BASE/swift.git" "$SWIFT_BRANCH"
-git -C "$OPEN_SWIFT_SOURCE_ROOT/swift" checkout "$SWIFT_BRANCH"
+git -C "$OPEN_SWIFT_SOURCE_ROOT/swift" fetch --filter=blob:none --depth 1 "$OPEN_SWIFT_GIT_BASE/swift.git" "${SWIFT_REVISION:-$SWIFT_BRANCH}"
+git -C "$OPEN_SWIFT_SOURCE_ROOT/swift" checkout --detach FETCH_HEAD
+if [[ -n "$SWIFT_REVISION" ]]; then
+  test "$(git -C "$OPEN_SWIFT_SOURCE_ROOT/swift" rev-parse HEAD)" = "$SWIFT_REVISION"
+fi
 
 if [[ -d "$OPEN_SWIFT_SOURCE_ROOT/llvm-project/.git" ]]; then
   git -C "$OPEN_SWIFT_SOURCE_ROOT/llvm-project" remote add osp "$OPEN_SWIFT_GIT_BASE/llvm-project.git" 2>/dev/null || true

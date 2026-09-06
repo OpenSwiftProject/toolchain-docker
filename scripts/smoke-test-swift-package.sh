@@ -76,6 +76,10 @@ run_configuration() {
   grep -Fq "ObjCGreeter: Hello from GNUstep Objective-C (4 items)" <<<"$output"
   grep -Fq "Swift saw: Hello from GNUstep Objective-C" <<<"$output"
   grep -Fq "Swift saw item count: 4" <<<"$output"
+  grep -Fq "Swift saw class: ObjCGreeter" <<<"$output"
+  grep -Fq "Swift saw class: NSString" <<<"$output"
+  grep -Fq "Swift saw class: NSObject" <<<"$output"
+  grep -Fq "Swift verified GNUstep selectors" <<<"$output"
 }
 
 run_configuration debug
