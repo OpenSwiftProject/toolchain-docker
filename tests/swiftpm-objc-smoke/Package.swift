@@ -25,7 +25,7 @@ let gnustepCompilerFlags = [
 let clangImporterFlags = gnustepCompilerFlags.flatMap { ["-Xcc", $0] }
 
 let package = Package(
-  name: "OpenSwiftSwiftPMObjCSmoke",
+  name: "OpenSwiftProjectToolchainExample",
   products: [
     .executable(name: "GNUstepObjCDemo", targets: ["GNUstepObjCDemo"]),
   ],
@@ -37,8 +37,6 @@ let package = Package(
         "ObjCGreeter.m",
         // Known runtime workaround tracked by OpenSwiftProject/swift#2.
         "ObjCInteropShim.c",
-        // Known selector ABI/IRGen workaround tracked by OpenSwiftProject/swift#3.
-        "DarwinSelectorRefs.c",
       ],
       publicHeadersPath: ".",
       cSettings: [
@@ -52,7 +50,10 @@ let package = Package(
       swiftSettings: [
         // Cross-cutting allocation gate tracked by swift#2 and swift#3.
         .define("OPEN_SWIFT_DEMOKIT_FACTORY_ISOLATION"),
-        .unsafeFlags(["-Xfrontend", "-enable-objc-interop"] + clangImporterFlags),
+        .unsafeFlags([
+          "-Xfrontend", "-enable-objc-interop",
+          "-Xfrontend", "-objc-runtime-vendor=gnustep",
+        ] + clangImporterFlags),
       ],
       linkerSettings: [
         .unsafeFlags([
@@ -60,8 +61,6 @@ let package = Package(
           "-Xlinker", "-rpath",
           "-Xlinker", "\(gnustepPrefix)/lib",
           "-Xlinker", "--export-dynamic",
-          // Known class-symbol lowering workaround tracked by swift#3.
-          "-Xlinker", "--defsym=OBJC_CLASS_$_ObjCGreeter=._OBJC_CLASS_ObjCGreeter",
         ]),
         .linkedLibrary("gnustep-base"),
         .linkedLibrary("objc"),

@@ -2,5 +2,5 @@
 .github
 .build
 .cache
+.ci-example
 *.log
-
