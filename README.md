@@ -27,6 +27,36 @@ checkouts above (and the matching `release/6.3` workspace populated by Swift's
 `update-checkout`). The runtime image currently links `clang` and `clang++` to
 Ubuntu 24.04's Clang 18 for C and Objective-C compilation.
 
+## Verified Release
+
+`6.3-alpha.3` was published on 2026-09-07 (Asia/Shanghai) for Linux ARM64 /
+Ubuntu 24.04. The [release workflow](https://github.com/OpenSwiftProject/toolchain-docker/actions/runs/34049285226)
+and [post-merge CI](https://github.com/OpenSwiftProject/toolchain-docker/actions/runs/34049148102)
+passed full source builds, clean Debug/Release build/run/test for both packages,
+selector DSO probes, and the manual shared-library example. After publication,
+the workflow anonymously pulled the immutable image and repeated the gate.
+
+```sh
+docker pull ghcr.io/openswiftproject/swift-gnustep-toolchain:6.3-alpha.3
+```
+
+Both `6.3-alpha.3` and `6.3-alpha.3-ubuntu24-aarch64` identify the verified image:
+
+```text
+sha256:1fe994e838781b510de667e805435e0a68f62c65fd6d9f13f3dae6791ac3a9da
+```
+
+It contains Swift `38cb233d6848882a1764134360cd22ae350cf0e3`, was built from
+toolchain commit `a4951ec83f1d604c4f17ffd1124d86d2d115c4ea`, and was validated
+against example commit `1b449e25988e2b330ba21f287c4f83dc01ea13d7`.
+The [package-workflow tracker](https://github.com/OpenSwiftProject/toolchain-docker/issues/2)
+records the delivery and remaining interop boundaries.
+
+For this release, `org.opencontainers.image.version` still inherits the base
+image's `24.04`; identify the toolchain using its immutable tag/digest and the
+`org.opencontainers.image.revision` / `org.openswiftproject.swift.revision`
+labels instead.
+
 ## Image Names
 
 Immutable alpha tags:
@@ -117,13 +147,10 @@ The `Toolchain package regression` workflow builds and tests pull requests and
 - the real example's manual shared-library runner and direct Swift allocation.
 
 Neither package may contain the selector shim or per-class linker aliases.
-The compiler and example selector changes must land before this gate can pass
-against their default branches. Once the new CI workflow is installed on
-`main`, manual runs can select candidate `swift_ref`/`example_ref` branches.
-
-For the next release, merge the compiler fix, then the example cleanup, then
-this repository's CI/fixture update. The planned next tag is `6.3-alpha.3`;
-this documentation is not a claim that it has already been published.
+The compiler and example selector changes are merged, and the gate has passed
+against their default branches for `6.3-alpha.3`. Manual runs can select
+candidate `swift_ref`/`example_ref` branches. For future dependent changes,
+land the compiler and example prerequisites before publishing the toolchain.
 
 The `Build and publish toolchain image` workflow can publish manually or from a git tag push. It uses GitHub's built-in `GITHUB_TOKEN` to push to GitHub Container Registry, so no Docker Hub secrets are required.
 
@@ -131,8 +158,8 @@ Manual workflow inputs:
 
 ```text
 runner: ubuntu-24.04-arm
-image: ghcr.io/openswiftproject/swift-gnustep-toolchain
-version_tag: required, for example 6.3-alpha.3
+image_name: ghcr.io/openswiftproject/swift-gnustep-toolchain
+version_tag: required; choose a new, unused 6.3-alpha.N tag
 build_jobs: 3
 swift_ref: feature/gnu_objc_6.3
 example_ref: main
@@ -142,11 +169,15 @@ Manual workflow runs build from forks, pass the shared release gate, and publish
 GHCR tags. A final step pulls the immutable tag with an empty Docker auth config
 and reruns the release gate, checking anonymous access and the published image.
 
-For normal releases, create and push a version tag:
+For normal releases, create and push a new, unused version tag at the reviewed
+release commit. `6.3-alpha.3` is already published and must not be reused.
+The version below is an example for a future release, not a published version:
 
 ```sh
-git tag 6.3-alpha.3
-git push <remote> 6.3-alpha.3
+release_remote=origin # Use your publication remote (osp in the local workspace).
+release_version=6.3-alpha.4 # Confirm this version is unused before tagging.
+git tag "$release_version"
+git push "$release_remote" "refs/tags/$release_version"
 ```
 
 Pushing `6.3-alpha.N` tags automatically publishes:
@@ -158,7 +189,8 @@ Pushing `6.3-alpha.N` tags automatically publishes:
 6.3-alpha-ubuntu24-aarch64
 ```
 
-After the first GHCR push, confirm the package visibility is public under the OpenSwiftProject organization so users can pull the image without logging in.
+Anonymous pull was verified for `6.3-alpha.3`. Keep the post-publication check
+enabled for later releases so public access continues to be tested.
 
 ## Build Layout Notes
 
